@@ -204,6 +204,7 @@ export default {
     //监听回车
     confirm(event) {
         this.send();
+      }
     },
     /**
      * 发送并清空消息输入框内的消息

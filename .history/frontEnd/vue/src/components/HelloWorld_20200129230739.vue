@@ -79,13 +79,13 @@
                 class="form-control input-group-lg"
                 style="height:8rem;"
                 id="msg_box"
-                @keyup.enter="confirm"
               />
               <span class="input-group-btn">
                 <button
                   class="btn btn-default"
                   type="button"
                   style="height: 8rem;width: 9rem;"
+                  onkeydown="confirm(event)"
                   @click="send"
                 >发送</button>
               </span>
@@ -203,7 +203,12 @@ export default {
 
     //监听回车
     confirm(event) {
+      var key_num = event.keyCode;
+      if (13 == key_num) {
         this.send();
+      } else {
+        return false;
+      }
     },
     /**
      * 发送并清空消息输入框内的消息

@@ -57,9 +57,6 @@ export default {
   margin: 1rem;
   padding: 0.5rem;
   border-radius: 0.6rem;
-  word-wrap: break-word;
-  word-break: break-all;
-  text-align: left;
 }
 .friend {
   float: left;
@@ -67,9 +64,6 @@ export default {
   margin: 1rem;
   padding: 0.5rem;
   border-radius: 0.6rem;
-  word-wrap: break-word;
-  word-break: break-all;
-  text-align: left;
 }
 .clearboth {
   color: gray;

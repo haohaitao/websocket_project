@@ -79,7 +79,6 @@
                 class="form-control input-group-lg"
                 style="height:8rem;"
                 id="msg_box"
-                @keyup.enter="confirm"
               />
               <span class="input-group-btn">
                 <button
@@ -140,7 +139,8 @@ export default {
           _this.deleteWsTimeOut(); //清除定时器
           _this.listMsg(data, uname);
           _this.disabled = true;
-          _this.online_total-=1;
+          var user_num = document.getElementById("user_num"); //获取id为user_num的dom
+          user_num.innerHTML = name_list.length;
         };
         //接收服务器返回消息的回调onmessage
         ws.onmessage = function(e) {
@@ -203,7 +203,12 @@ export default {
 
     //监听回车
     confirm(event) {
+      var key_num = event.keyCode;
+      if (13 == key_num) {
         this.send();
+      } else {
+        return false;
+      }
     },
     /**
      * 发送并清空消息输入框内的消息

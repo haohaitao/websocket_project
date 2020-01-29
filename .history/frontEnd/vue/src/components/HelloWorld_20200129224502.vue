@@ -65,6 +65,10 @@
             class="panel-body"
             style="height: 35rem;overflow: auto;-webkit-overflow-scrolling: touch;"
           >
+            <!-- <div v-for="(item,i) in listData" :key="i">
+              <div :class="temp.indexOf(username) !== -1 ? 'myself' : (temp.indexOf('系统消息') !== -1 ? 'stystem' : 'friend')">{{item}}</div>
+              <div class="clearboth"></div>
+            </div> -->
             <div class="panel-body" id="msg_list" style="height: 30rem;overflow: auto;-webkit-overflow-scrolling: touch;">
 
             </div>
@@ -79,7 +83,6 @@
                 class="form-control input-group-lg"
                 style="height:8rem;"
                 id="msg_box"
-                @keyup.enter="confirm"
               />
               <span class="input-group-btn">
                 <button
@@ -106,15 +109,20 @@ export default {
     return {
       username: "", //用户名
       online_total: 0, //在线人数
-      timeout: 60000, //延时
+      timeout: 6000, //延时
       wsTimeoutObj: null, //延时器对象
       disabled: true, //默认禁止点击断开按钮
       wsObject: {}, //存链接后的，websocket实例对象
+      listData: [], //存聊天内容
+      temp: "" //存data
     };
+  },
+  mounted() {
+    var a = sessionStorage.getItem("connect");
   },
   methods: {
     btnLink() {
-      // 改变this指向
+      // 指定this
       var _this = this
       if (this.username === "") {
         alert("请输入一个昵称，再点击连接！");
@@ -124,10 +132,12 @@ export default {
         //实例化websocket
         var ws = new WebSocket("ws://127.0.0.1:8888");
         this.wsObject = ws
+        console.log('this.wsObject....',this.wsObject)
         //连接成功的回调onopen
         ws.onopen = function(e) {
           let data = "系统消息：建立连接成功";
           _this.listMsg(data, uname);
+          console.log('onopen中的this指向...',_this)
           if (e.currentTarget.readyState == 1) {
             _this.disabled = false;
           }
@@ -140,7 +150,8 @@ export default {
           _this.deleteWsTimeOut(); //清除定时器
           _this.listMsg(data, uname);
           _this.disabled = true;
-          _this.online_total-=1;
+          var user_num = document.getElementById("user_num"); //获取id为user_num的dom
+          user_num.innerHTML = name_list.length;
         };
         //接收服务器返回消息的回调onmessage
         ws.onmessage = function(e) {
@@ -170,6 +181,7 @@ export default {
           }
 
           var data = sender + msg.content; //拼接title和content，例如：'系统消息：xxx上线了'
+          console.log('switch中的this....',this)
           _this.listMsg(data, uname); //传值给listMsg
         };
         //错误的回调onerror
@@ -182,6 +194,7 @@ export default {
     //定时器方法
     startWsTimeOut() {
       var ws = this.wsObject;
+      console.log('startWsTimeOut.....',this,this.timeout)
       this.wsTimeoutObj = setTimeout(function() {
         ws.send('{"type":"heartbeat","content":"ping"}');
       }, this.timeout);
@@ -203,7 +216,12 @@ export default {
 
     //监听回车
     confirm(event) {
+      var key_num = event.keyCode;
+      if (13 == key_num) {
         this.send();
+      } else {
+        return false;
+      }
     },
     /**
      * 发送并清空消息输入框内的消息
@@ -211,6 +229,7 @@ export default {
     send() {
       var msg_box = document.getElementById("msg_box");
       var content = msg_box.value;
+      console.log('send的this...',this)
       if (this.disabled) {
         alert("请先连接哦");
       } else if (content == "") {
@@ -275,6 +294,7 @@ export default {
 
       for (var index in name_list) {
         var user = document.createElement("p");
+        console.log('name_list......',name_list)
         user.innerHTML = name_list[index];
         user_list.appendChild(user);
       }

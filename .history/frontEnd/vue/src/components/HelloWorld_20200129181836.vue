@@ -23,8 +23,8 @@
             <div class="form-group">
               <input type="text" placeholder="输入你的昵称" v-model="username" class="form-control" />
             </div>
-            <button class="btn btn-success" v-if="disabled" :disabled="!disabled" @click="btnLink">连接</button>
-            <button class="btn btn-danger" v-if="!disabled" :disabled="disabled" @click="closeBtn">断开</button>
+            <button class="btn btn-success" @click="btnLink">连接</button>
+            <button class="btn btn-danger" :disabled="disabled" @click="closeBtn">断开</button>
           </div>
         </div>
         <!--/.navbar-collapse -->
@@ -65,8 +65,9 @@
             class="panel-body"
             style="height: 35rem;overflow: auto;-webkit-overflow-scrolling: touch;"
           >
-            <div class="panel-body" id="msg_list" style="height: 30rem;overflow: auto;-webkit-overflow-scrolling: touch;">
-
+            <div v-for="(item,i) in listData" :key="i">
+              <!-- <div :class="temp.indexOf(username) !== -1 ? 'myself' : (temp.indexOf('系统消息') !== -1 ? 'stystem' : 'friend')">{{item}}</div>
+              <div class="clearboth"></div>-->
             </div>
           </div>
         </div>
@@ -79,13 +80,13 @@
                 class="form-control input-group-lg"
                 style="height:8rem;"
                 id="msg_box"
-                @keyup.enter="confirm"
               />
               <span class="input-group-btn">
                 <button
                   class="btn btn-default"
                   type="button"
                   style="height: 8rem;width: 9rem;"
+                  id="msg_box"
                   @click="send"
                 >发送</button>
               </span>
@@ -106,47 +107,70 @@ export default {
     return {
       username: "", //用户名
       online_total: 0, //在线人数
-      timeout: 60000, //延时
+      timeout: 6000, //延时
       wsTimeoutObj: null, //延时器对象
-      disabled: true, //默认禁止点击断开按钮
+      disabled: true, //默认禁止点击断开
       wsObject: {}, //存链接后的，websocket实例对象
+      listData: [], //存聊天内容
+      temp: "" //存data
     };
+  },
+  mounted() {
+    var a = sessionStorage.getItem("connect");
+  },
+  //返回connectState
+  computed: {
+    getconnectState() {
+      var a = sessionStorage.getItem("connect");
+      return a;
+    }
+  },
+  //监听计算属性返回的值
+  watch: {
+    getconnectState(old, newVal) {
+      console.log(old, newVal);
+      this.disabled = a;
+    }
   },
   methods: {
     btnLink() {
-      // 改变this指向
-      var _this = this
+      //初始化定时器对象
+      wsTimeoutObj = null;
       if (this.username === "") {
         alert("请输入一个昵称，再点击连接！");
         return false;
-      }else {
+      } else {
         let uname = this.username;
         //实例化websocket
         var ws = new WebSocket("ws://127.0.0.1:8888");
         this.wsObject = ws
+        consolelog('this.wsObject....',this.wsObject)
         //连接成功的回调onopen
         ws.onopen = function(e) {
           let data = "系统消息：建立连接成功";
-          _this.listMsg(data, uname);
+          listMsg(data, uname, getUser);
           if (e.currentTarget.readyState == 1) {
-            _this.disabled = false;
+            let disabledState = document.getElementById("linkState");
+            disabledState.disabled = false;
           }
           //调定时器方法
-          _this.startWsTimeOut();
+          startWsTimeOut();
         };
         //连接关闭的回调onclose
         ws.onclose = function(e) {
           let data = "系统消息：已退出聊天室";
-          _this.deleteWsTimeOut(); //清除定时器
-          _this.listMsg(data, uname);
-          _this.disabled = true;
-          _this.online_total-=1;
+          deleteWsTimeOut(); //清除定时器
+          listMsg(data, uname, getUser);
+          let a = document.getElementById("linkState");
+          a.disabled = true;
+          var user_num = document.getElementById("user_num"); //获取id为user_num的dom
+          user_num.innerHTML = name_list.length;
         };
         //接收服务器返回消息的回调onmessage
         ws.onmessage = function(e) {
           var msg = JSON.parse(e.data); //解析服务器返回的消息赋值给变量msg
           if (msg.type === "pong") {
-            _this.resetWsTimeOut();
+            resetWsTimeOut();
           }
           var sender, user_name, name_list, change_type; //声明变量 sender(内容前的title)，user_name(拿登录用户名)，name_list(拿用户列表)，change_type(消息类型)
           switch (msg.type) {
@@ -158,52 +182,56 @@ export default {
               break;
             case "handshake":
               var user_info = { type: "login", content: uname };
-              _this.sendMsg(user_info);
+              sendMsg(user_info);
               return;
             case "login":
             case "logout":
               user_name = msg.content;
               name_list = msg.user_list;
               change_type = msg.type;
-              _this.dealUser(user_name, change_type, name_list);
+              dealUser(user_name, change_type, name_list);
               return;
           }
 
           var data = sender + msg.content; //拼接title和content，例如：'系统消息：xxx上线了'
-          _this.listMsg(data, uname); //传值给listMsg
+          listMsg(data, uname, getUser); //传值给listMsg
         };
         //错误的回调onerror
         ws.onerror = function() {
           var data = "系统消息 : 出错了,请退出重试.";
-          _this.listMsg(data, uname, getUser);
+          listMsg(data, uname, getUser);
         };
       }
     },
     //定时器方法
     startWsTimeOut() {
-      var ws = this.wsObject;
-      this.wsTimeoutObj = setTimeout(function() {
+      wsTimeoutObj = setTimeout(function() {
         ws.send('{"type":"heartbeat","content":"ping"}');
       }, this.timeout);
     },
     //重置定时器
     resetWsTimeOut() {
       // 重置计时器
-      clearTimeout(this.wsTimeoutObj); // 清空计时器
-      this.startWsTimeOut();
+      clearTimeout(wsTimeoutObj); // 清空计时器
+      startWsTimeOut();
     },
     //清除定时器
     deleteWsTimeOut() {
-      clearTimeout(this.wsTimeoutObj); // 清空计时器
+      clearTimeout(wsTimeoutObj); // 清空计时器
     },
     //断开连接
     closeBtn() {
-      this.wsObject.close();
+      ws.close();
     },
 
     //监听回车
     confirm(event) {
-        this.send();
+      var key_num = event.keyCode;
+      if (13 == key_num) {
+        send();
+      } else {
+        return false;
+      }
     },
     /**
      * 发送并清空消息输入框内的消息
@@ -211,7 +239,9 @@ export default {
     send() {
       var msg_box = document.getElementById("msg_box");
       var content = msg_box.value;
-      if (this.disabled) {
+
+      var linkState = document.getElementById("linkState");
+      if (linkState.disabled) {
         alert("请先连接哦");
       } else if (content == "") {
         alert("不能发送空消息哦");
@@ -219,7 +249,7 @@ export default {
         var reg = new RegExp("\r\n", "g");
         content = content.replace(reg, "");
         var msg = { content: content.trim(), type: "user" };
-        this.sendMsg(msg);
+        sendMsg(msg);
         msg_box.value = "";
         // todo 清除换行符
       }
@@ -240,12 +270,10 @@ export default {
           msg.innerHTML = newData; //div标签中添加内容为拼装好的数据
           msg_list.appendChild(msg); //添加带有内容的div标签到内容div的dom节点
           msg_list.appendChild(clear); //添加带有清除浮动的div标签到内容div的dom节点
-          msg_list.scrollTop = msg_list.scrollHeight; //添加内容后滚动到底部
         } else if (data.indexOf("系统消息") !== -1) {
           var msg = document.createElement("p"); //创建p标签
           msg.innerHTML = data; //p标签中添加内容为拼装好的数据
           msg_list.appendChild(msg); //添加带有内容的p标签到div的dom节点
-          msg_list.scrollTop = msg_list.scrollHeight; //添加内容后滚动到底部
         } else {
           var msg = document.createElement("div"); //创建div标签
           msg.className = "friend";
@@ -256,9 +284,9 @@ export default {
           msg.innerHTML = "【" + feiendUsername + "】说：" + feiendContent; //div标签中添加内容为拼装好的数据
           msg_list.appendChild(msg); //添加带有内容的div标签添加到内容div的dom节点
           msg_list.appendChild(clear); //添加带有清除浮动的div标签到内容div的dom节点
-          msg_list.scrollTop = msg_list.scrollHeight; //添加内容后滚动到底部
         }
       }
+      msg_list.scrollTop = msg_list.scrollHeight; //添加内容后滚动到底部
     },
     /**
      * 处理用户登陆消息
@@ -269,6 +297,7 @@ export default {
      */
     dealUser(user_name, type, name_list) {
       var user_list = document.getElementById("user_list"); //获取id为user_list的dom
+      var user_num = document.getElementById("user_num"); //获取id为user_num的dom
       while (user_list.hasChildNodes()) {
         user_list.removeChild(user_list.firstChild);
       }
@@ -278,7 +307,7 @@ export default {
         user.innerHTML = name_list[index];
         user_list.appendChild(user);
       }
-      this.online_total = name_list.length;
+      user_num.innerHTML = name_list.length;
       user_list.scrollTop = user_list.scrollHeight;
 
       var change = type == "login" ? "加入聊天室" : "离开聊天室";
@@ -297,7 +326,7 @@ export default {
         (time.getSeconds() < 10 ? "0" + time.getSeconds() : time.getSeconds());
       var data =
         "系统消息" + "(" + nowTime + ")" + "：" + user_name + " 已" + change;
-      this.listMsg(data);
+      listMsg(data);
     },
     /**
      * 将数据转为json并发送
@@ -306,7 +335,7 @@ export default {
     sendMsg(msg) {
       //websocket的发送方法send(data),data为发送的内容
       var data = JSON.stringify(msg);
-      this.wsObject.send(data);
+      ws.send(data);
     }
   }
 };
@@ -314,4 +343,69 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+@media (min-width: 768px) {
+  .col-sm-6 {
+    width: 81rem;
+  }
+  .row {
+    width: 100rem;
+    margin: 0 auto;
+  }
+  .stystem {
+    padding: 0.2rem;
+    background: #eee;
+    width: 30rem;
+    margin: 0 auto;
+    border-radius: 1.2rem;
+    margin: 0.5rem auto;
+  }
+}
+@media (max-width: 500px) {
+  .stystem {
+    padding: 0.2rem;
+    background: #eee;
+    width: 22rem;
+    margin: 0 auto;
+    border-radius: 1.2rem;
+    margin: 0.5rem auto;
+  }
+}
+.myself {
+  float: right;
+  background: #cfffcf;
+  margin: 1rem;
+  padding: 0.5rem;
+  border-radius: 0.6rem;
+}
+.friend {
+  float: left;
+  background: #ffe6b8;
+  margin: 1rem;
+  padding: 0.5rem;
+  border-radius: 0.6rem;
+}
+.clearboth {
+  color: gray;
+  clear: both;
+  margin-left: 20px;
+  padding-top: 5px;
+}
+/* 设置滚动条的样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+/* 滚动槽 */
+::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+/* 滚动条滑块 */
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: #bbb;
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+}
+::-webkit-scrollbar-thumb:window-inactive {
+  background: rgba(255, 0, 0, 0.4);
+}
 </style>
