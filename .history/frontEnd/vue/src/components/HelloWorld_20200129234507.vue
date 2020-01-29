@@ -175,7 +175,7 @@ export default {
         //错误的回调onerror
         ws.onerror = function() {
           var data = "系统消息 : 出错了,请退出重试.";
-          _this.listMsg(data, uname);
+          _this.listMsg(data, uname, getUser);
         };
       }
     },
@@ -227,7 +227,7 @@ export default {
     /**
      * 将消息内容添加到输出框中,并将滚动条滚动到最下方
      */
-    listMsg(data, uname) {
+    listMsg(data, uname, getUser) {
       var msg_list = document.getElementById("msg_list"); //获取到id为msg_list的dom(聊天内容区域)
       if (data) {
         if (data.indexOf(uname) !== -1) {
